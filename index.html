@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockGuard EWS - Real-Time Multi-Channel Stock Alert & Inventory Hub</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .page-view {
+            display: none;
+        }
+        .page-view.active {
+            display: block;
+        }
+        /* Inner scrollbar for content */
+        .app-content-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .app-content-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased h-screen overflow-hidden flex flex-col select-none">
+
+    <!-- LOGIN SCREEN PAGE VIEW -->
+    <div id="page-login" class="page-view active h-screen w-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-4 fixed inset-0 z-50 overflow-y-auto">
+        <div class="w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden p-8 border border-white/20 my-auto">
+            <div class="text-center mb-6">
+                <div class="inline-flex p-3 bg-indigo-600 rounded-2xl text-white mb-2 shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-shield-halved text-3xl"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-900 tracking-tight">StockGuard <span class="text-xs px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-bold border border-indigo-200">EWS</span></h2>
+                <p class="text-xs font-medium text-slate-500 mt-1">Intelligent Multi-Channel Inventory Engine</p>
+            </div>
+
+            <form onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email / Username</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                            <i class="fa-solid fa-envelope text-sm"></i>
+                        </span>
+                        <input type="text" id="loginUser" value="admin@stockguard.io" required class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Kata Sandi</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                            <i class="fa-solid fa-lock text-sm"></i>
+                        </span>
+                        <input type="password" id="loginPass" value="admin123" required class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-xs">
+                    <label class="flex items-center text-slate-600 font-medium cursor-pointer">
+                        <input type="checkbox" checked class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mr-2">
+                        Ingat Saya
+                    </label>
+                    <a href="#" onclick="showToast('Sandi reset telah dikirim ke admin.'); return false;" class="text-indigo-600 font-semibold hover:underline">Lupa Password?</a>
+                </div>
+
+                <div class="space-y-2 pt-1">
+                    <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white font-bold rounded-xl shadow-lg shadow-indigo-500/30 transition duration-200 flex items-center justify-center gap-2 text-sm">
+                        <i class="fa-solid fa-right-to-bracket"></i>
+                        Masuk ke Aplikasi
+                    </button>
+                    <button type="button" onclick="quickDemoLogin()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-200">
+                        <i class="fa-solid fa-bolt text-amber-500"></i>
+                        Klik Cepat: Demo Auto-Login
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP WRAPPER (HIDDEN UNTIL LOGGED IN) -->
+    <div id="app-wrapper" class="hidden h-screen flex flex-col overflow-hidden w-full">
+        <!-- Navigation Bar -->
+        <header class="bg-slate-900 text-white shrink-0 shadow-md">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-3 cursor-pointer" onclick="navigateTo('dashboard')">
+                        <div class="p-2 bg-indigo-600 rounded-lg text-white shadow-md shadow-indigo-600/30">
+                            <i class="fa-solid fa-shield-halved text-xl"></i>
+                        </div>
+                        <div>
+                            <h1 class="font-black text-xl leading-tight tracking-tight flex items-center gap-1.5">
+                                StockGuard <span class="text-xs px-2 py-0.5 rounded bg-indigo-500/30 text-indigo-300 font-semibold border border-indigo-500/30">EWS</span>
+                            </h1>
+                            <p class="text-[11px] text-indigo-300">Intelligent Multi-Channel Inventory Engine</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Page Nav Links -->
+                    <nav class="hidden md:flex space-x-1 text-sm font-medium">
+                        <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="nav-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Dashboard Stok</button>
+                        <button onclick="navigateTo('simulator')" id="nav-simulator" class="nav-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Simulasi EWS</button>
+                        <button onclick="navigateTo('channels')" id="nav-channels" class="nav-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Integrasi Channel</button>
+                        <button onclick="navigateTo('architecture')" id="nav-architecture" class="nav-btn px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition">Arsitektur System</button>
+                    </nav>
+
+                    <div class="flex items-center space-x-3">
+                        <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                            <span class="w-2 h-2 mr-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                            Live Sync
+                        </span>
+                        <button onclick="handleLogout()" class="px-3 py-1.5 bg-slate-800 hover:bg-red-900/50 hover:text-red-300 text-slate-300 rounded-lg text-xs font-semibold border border-slate-700 transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-power-off"></i>
+                            Keluar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Mobile Nav Sub-bar -->
+            <div class="md:hidden bg-slate-800 px-4 py-2 flex justify-around text-xs border-t border-slate-700">
+                <button onclick="navigateTo('dashboard')" class="text-slate-300 hover:text-white py-1 font-medium">Dashboard</button>
+                <button onclick="navigateTo('simulator')" class="text-slate-300 hover:text-white py-1 font-medium">Simulasi</button>
+                <button onclick="navigateTo('channels')" class="text-slate-300 hover:text-white py-1 font-medium">Channel</button>
+                <button onclick="navigateTo('architecture')" class="text-slate-300 hover:text-white py-1 font-medium">Arsitektur</button>
+            </div>
+        </header>
+
+        <!-- Main Content Area with Page Views -->
+        <main class="flex-1 overflow-y-auto app-content-scroll max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+            <!-- PAGE VIEW 1: DASHBOARD -->
+            <div id="page-dashboard" class="page-view active space-y-6">
+                <!-- Metrics Overview Section -->
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total SKU Aktif</p>
+                            <h3 class="text-2xl font-bold text-slate-800 mt-1">1,248</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1"><i class="fa-solid fa-arrow-up text-xs mr-1"></i>98.2% Tersinkronisasi</p>
+                        </div>
+                        <div class="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
+                            <i class="fa-solid fa-barcode text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Saluran Terhubung</p>
+                            <h3 class="text-2xl font-bold text-slate-800 mt-1">5 Channel</h3>
+                            <p class="text-xs text-slate-500 font-medium mt-1">Marketplace & POS Offline</p>
+                        </div>
+                        <div class="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                            <i class="fa-solid fa-network-wired text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status Kritis (Warning)</p>
+                            <h3 class="text-2xl font-bold text-amber-600 mt-1" id="criticalCount">3 Produk</h3>
+                            <p class="text-xs text-amber-700 font-medium mt-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Mendekati Reorder Point</p>
+                        </div>
+                        <div class="p-3 bg-amber-50 text-amber-600 rounded-lg">
+                            <i class="fa-solid fa-circle-exclamation text-xl"></i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Stockout Dicegah</p>
+                            <h3 class="text-2xl font-bold text-emerald-600 mt-1">99.4%</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1">Akurasi EWS Bulan Ini</p>
+                        </div>
+                        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg">
+                            <i class="fa-solid fa-shield-halved text-xl"></i>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Live Inventory Table & Dashboard -->
+                <section class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-indigo-600"></i>
+                                Monitoring Stok Produk Multi-Channel (Real-Time EWS)
+                            </h3>
+                            <p class="text-sm text-slate-500 mt-0.5">Daftar produk dengan kalkulasi batas kritis dan alokasi kanal otomatis.</p>
+                        </div>
+                        <div class="flex items-center gap-2 w-full sm:w-auto">
+                            <input type="text" id="tableSearch" onkeyup="filterTable()" placeholder="Cari SKU / nama produk..." class="w-full sm:w-64 border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full text-left border-collapse text-sm">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 text-xs uppercase tracking-wider">
+                                    <th class="py-3 px-4">Kode SKU / Produk</th>
+                                    <th class="py-3 px-4 text-center">Stok Terpusat</th>
+                                    <th class="py-3 px-4 text-center">Safety Stock</th>
+                                    <th class="py-3 px-4 text-center">Reorder Point (ROP)</th>
+                                    <th class="py-3 px-4 text-center">Alokasi Multi-Channel</th>
+                                    <th class="py-3 px-4 text-center">Status EWS</th>
+                                    <th class="py-3 px-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventoryTableBody" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- Dynamic JS Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PAGE VIEW 2: SIMULATOR EWS -->
+            <div id="page-simulator" class="page-view space-y-6">
+                <section class="bg-slate-900 text-white rounded-xl shadow-xl overflow-hidden border border-slate-800">
+                    <div class="p-6 bg-slate-800/80 border-b border-slate-700 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                                <i class="fa-solid fa-microchip text-indigo-400"></i>
+                                Simulator Algoritma Peringatan Dini (Early Warning System)
+                            </h3>
+                            <p class="text-xs text-slate-400 mt-1">Uji perhitungan otomatis Reorder Point (ROP) & Safety Stock berdasarkan parameter historis.</p>
+                        </div>
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-300 text-xs font-mono rounded border border-indigo-500/30">Formula: ROP = (d × L) + SS</span>
+                    </div>
+
+                    <div class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <!-- Input Controls -->
+                        <div class="lg:col-span-5 space-y-4 bg-slate-800/50 p-5 rounded-lg border border-slate-700">
+                            <h4 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider border-b border-slate-700 pb-2">Input Parameter Operasional</h4>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Rata-rata Penjualan Harian (d) [unit/hari]</label>
+                                <input type="number" id="inputAvgDemand" value="25" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Waktu Tunggu Supplier / Lead Time (L) [hari]</label>
+                                <input type="number" id="inputLeadTime" value="5" min="1" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Faktor Tingkat Layanan (Z - Service Level 95% = 1.65)</label>
+                                <select id="inputZScore" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                                    <option value="1.28">90% Confidence (Z = 1.28)</option>
+                                    <option value="1.65" selected>95% Confidence (Z = 1.65)</option>
+                                    <option value="2.33">99% Confidence (Z = 2.33)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Deviasi Standar Penjualan Harian (σd)</label>
+                                <input type="number" id="inputStdDev" value="8" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">Stok Fisik Saat Ini dalam Gudang Terpusat</label>
+                                <input type="number" id="inputCurrentStock" value="140" min="0" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                            </div>
+
+                            <button id="btnCalculate" onclick="calculateEWS()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm rounded-lg transition shadow-md">
+                                Jalankan Kalkulasi EWS
+                            </button>
+                        </div>
+
+                        <!-- Calculation Results Output -->
+                        <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+                                    <p class="text-xs text-slate-400 font-medium">Safety Stock (SS)</p>
+                                    <p id="resSS" class="text-2xl font-bold text-indigo-400 mt-1">29 unit</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Stok Pengaman Gejolak</p>
+                                </div>
+                                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+                                    <p class="text-xs text-slate-400 font-medium">Reorder Point (ROP)</p>
+                                    <p id="resROP" class="text-2xl font-bold text-amber-400 mt-1">154 unit</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Batas Kritis Pemesanan</p>
+                                </div>
+                                <div class="bg-slate-800 p-4 rounded-lg border border-slate-700 text-center">
+                                    <p class="text-xs text-slate-400 font-medium">Sisa Hari Operasional</p>
+                                    <p id="resDaysLeft" class="text-2xl font-bold text-emerald-400 mt-1">5.6 Hari</p>
+                                    <p class="text-[10px] text-slate-500 mt-1">Estimasi Habis</p>
+                                </div>
+                            </div>
+
+                            <!-- Status Display Box -->
+                            <div id="statusBox" class="p-5 rounded-lg border bg-amber-950/40 border-amber-600/50 flex items-start gap-4">
+                                <div id="statusIcon" class="text-3xl text-amber-500 mt-1">
+                                    <i class="fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                                <div>
+                                    <h4 id="statusTitle" class="text-lg font-bold text-amber-400">PERINGATAN DINI: PEMESANAN ULANG DIPERLUKAN!</h4>
+                                    <p id="statusDesc" class="text-xs text-slate-300 mt-1 leading-relaxed">
+                                        Stok fisik saat ini (140 unit) telah berada di bawah batas kritis **Reorder Point (154 unit)**. Sistem menyarankan untuk segera menerbitkan Purchase Order (PO) ke pemasok untuk mencegah keterlambatan penerimaan barang.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Visual Indicator Bar -->
+                            <div class="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                                <div class="flex justify-between text-xs text-slate-300 font-medium mb-2">
+                                    <span>Visualisasi Level Stok saat ini vs Batas Kritis</span>
+                                    <span id="barPercent">80% dari ROP</span>
+                                </div>
+                                <div class="w-full bg-slate-900 rounded-full h-4 overflow-hidden p-0.5 border border-slate-700 relative">
+                                    <div id="progressBar" class="bg-amber-500 h-full rounded-full transition-all duration-500" style="width: 80%;"></div>
+                                </div>
+                                <div class="flex justify-between text-[10px] text-slate-500 mt-2">
+                                    <span>0 Unit</span>
+                                    <span class="text-amber-400 font-semibold">ROP Threshold</span>
+                                    <span>Max Capacity</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PAGE VIEW 3: INTEGRASI CHANNEL -->
+            <div id="page-channels" class="page-view space-y-6">
+                <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Channel Allocation Chart -->
+                    <div class="lg:col-span-7 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="border-b border-slate-100 pb-3 mb-4 flex justify-between items-center">
+                            <div>
+                                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-chart-pie text-indigo-600"></i>
+                                    Distribusi Alokasi Stok Antar Channel Penjualan
+                                </h3>
+                                <p class="text-xs text-slate-500">Persentase alokasi persediaan dinamis berdasarkan velocity penjualan.</p>
+                            </div>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="channelChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Sync Log & Status Multi-Channel -->
+                    <div class="lg:col-span-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <div class="border-b border-slate-100 pb-3 mb-4">
+                                <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                    <i class="fa-solid fa-arrows-rotate text-indigo-600"></i>
+                                    Status Integrasi API Channel
+                                </h3>
+                                <p class="text-xs text-slate-500">Konektivitas dan sinkronisasi stok otomatis.</p>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div class="flex items-center space-x-3">
+                                        <i class="fa-solid fa-store text-orange-500 text-lg"></i>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-800">Shopee Indonesia</p>
+                                            <p class="text-[10px] text-slate-500">Last sync: 2 detik lalu</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 font-semibold rounded-full">Aktif</span>
+                                </div>
+
+                                <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div class="flex items-center space-x-3">
+                                        <i class="fa-solid fa-bag-shopping text-emerald-500 text-lg"></i>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-800">Tokopedia</p>
+                                            <p class="text-[10px] text-slate-500">Last sync: 5 detik lalu</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 font-semibold rounded-full">Aktif</span>
+                                </div>
+
+                                <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div class="flex items-center space-x-3">
+                                        <i class="fa-solid fa-video text-slate-900 text-lg"></i>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-800">TikTok Shop</p>
+                                            <p class="text-[10px] text-slate-500">Last sync: 12 detik lalu</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 font-semibold rounded-full">Aktif</span>
+                                </div>
+
+                                <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+                                    <div class="flex items-center space-x-3">
+                                        <i class="fa-solid fa-cash-register text-blue-600 text-lg"></i>
+                                        <div>
+                                            <p class="text-xs font-semibold text-slate-800">POS Offline Store</p>
+                                            <p class="text-[10px] text-slate-500">Last sync: Realtime (LAN)</p>
+                                        </div>
+                                    </div>
+                                    <span class="px-2 py-0.5 text-[10px] bg-emerald-100 text-emerald-700 font-semibold rounded-full">Aktif</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 text-center">
+                            <button onclick="triggerManualSync()" class="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1">
+                                <i class="fa-solid fa-rotate"></i>
+                                Paksa Sinkronisasi Ulang Semua Channel
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PAGE VIEW 4: ARSITEKTUR SYSTEM -->
+            <div id="page-architecture" class="page-view space-y-6">
+                <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div class="border-b border-slate-100 pb-4 mb-6">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-indigo-600"></i>
+                            Arsitektur Alur Integrasi Multi-Channel & Algoritma EWS
+                        </h3>
+                        <p class="text-sm text-slate-500 mt-1">Proses sinkronisasi terpusat dua arah (Bi-Directional) antara marketplace, POS, dan mesin kalkulasi batas kritis.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center mb-8">
+                        <div class="p-5 bg-slate-50 rounded-lg border border-slate-200">
+                            <div class="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-base shadow-md">1</div>
+                            <h4 class="font-semibold text-sm text-slate-800 mb-1">Multi-Channel Sales</h4>
+                            <p class="text-xs text-slate-500">Shopee, Tokopedia, TikTok Shop, Web, & Toko Offline (POS).</p>
+                        </div>
+
+                        <div class="p-5 bg-slate-50 rounded-lg border border-slate-200">
+                            <div class="w-12 h-12 bg-indigo-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-base shadow-md">2</div>
+                            <h4 class="font-semibold text-sm text-slate-800 mb-1">Hub Middleware / API</h4>
+                            <p class="text-xs text-slate-500">Agregasi data transaksi & pengurangan stok terpusat secara real-time.</p>
+                        </div>
+
+                        <div class="p-5 bg-amber-50 rounded-lg border border-amber-200">
+                            <div class="w-12 h-12 bg-amber-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-base shadow-md">3</div>
+                            <h4 class="font-semibold text-sm text-slate-800 mb-1">Algoritma EWS</h4>
+                            <p class="text-xs text-slate-600">Evaluasi otomatis ROP, Safety Stock, Lead Time, & Variance Demand.</p>
+                        </div>
+
+                        <div class="p-5 bg-emerald-50 rounded-lg border border-emerald-200">
+                            <div class="w-12 h-12 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto mb-3 font-bold text-base shadow-md">4</div>
+                            <h4 class="font-semibold text-sm text-slate-800 mb-1">Aksi & Notifikasi</h4>
+                            <p class="text-xs text-slate-600">Peringatan stok kritis ke Purchasing & Pembaharuan Alokasi Stok Channel.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                        <h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-server text-indigo-600"></i>
+                            Spesifikasi Sistem Hub Integrasi
+                        </h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-600">
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <span class="font-semibold text-slate-800 block">Protokol Komunikasi</span>
+                                RESTful API / Webhook Bi-Directional
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <span class="font-semibold text-slate-800 block">Waktu Sinkronisasi</span>
+                                Near Real-Time (&lt; 2 Detik Per Transaksi)
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <span class="font-semibold text-slate-800 block">Mitigasi Over-Selling</span>
+                                Auto Stock Reservation / Buffer Locks
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- PAGE VIEW 5: PRODUK DETAIL -->
+            <div id="page-detail" class="page-view space-y-6">
+                <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-4 mb-6">
+                        <div>
+                            <button onclick="navigateTo('dashboard')" class="text-xs text-indigo-600 font-semibold hover:underline flex items-center gap-1 mb-2">
+                                <i class="fa-solid fa-arrow-left"></i> Kembali ke Dashboard
+                            </button>
+                            <h3 id="detailTitle" class="text-xl font-bold text-slate-800">Detail Produk SKU-1001</h3>
+                            <p id="detailSku" class="text-xs text-slate-400 font-mono">Kode SKU: SKU-1001</p>
+                        </div>
+                        <button onclick="loadCurrentDetailToSimulator()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 transition flex items-center gap-2">
+                            <i class="fa-solid fa-calculator"></i> Buka di Simulator EWS
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="font-bold text-slate-700 text-sm">Status Inventaris</h4>
+                            <div class="flex justify-between text-xs py-1 border-b border-slate-200">
+                                <span class="text-slate-500">Stok Gudang Terpusat</span>
+                                <span id="detailTotalStock" class="font-bold text-slate-800">140 Unit</span>
+                            </div>
+                            <div class="flex justify-between text-xs py-1 border-b border-slate-200">
+                                <span class="text-slate-500">Penjualan Harian (d)</span>
+                                <span id="detailAvgDemand" class="font-semibold text-slate-700">25 Unit/hari</span>
+                            </div>
+                            <div class="flex justify-between text-xs py-1 border-b border-slate-200">
+                                <span class="text-slate-500">Lead Time Supplier (L)</span>
+                                <span id="detailLeadTime" class="font-semibold text-slate-700">5 Hari</span>
+                            </div>
+                            <div class="flex justify-between text-xs py-1">
+                                <span class="text-slate-500">Safety Stock (SS)</span>
+                                <span id="detailSS" class="font-bold text-indigo-600">29 Unit</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="font-bold text-slate-700 text-sm">Rincian Batas Kritis (EWS)</h4>
+                            <div class="flex justify-between text-xs py-1 border-b border-slate-200">
+                                <span class="text-slate-500">Reorder Point (ROP)</span>
+                                <span id="detailROP" class="font-bold text-amber-600">154 Unit</span>
+                            </div>
+                            <div class="flex justify-between text-xs py-1 border-b border-slate-200">
+                                <span class="text-slate-500">Status Saat Ini</span>
+                                <span id="detailStatusBadge" class="font-bold text-amber-600">Perlu Reorder</span>
+                            </div>
+                            <div class="flex justify-between text-xs py-1">
+                                <span class="text-slate-500">Estimasi Ketersediaan</span>
+                                <span id="detailDaysLeft" class="font-semibold text-slate-700">5.6 Hari</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                            <h4 class="font-bold text-slate-700 text-sm">Alokasi Stok Per Channel</h4>
+                            <div id="detailChannelsList" class="space-y-1.5 text-xs">
+                                <!-- Dynamic Channel Allocation -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-slate-900 border-t border-slate-800 text-slate-400 py-4 text-center text-xs shrink-0">
+            <div class="max-w-7xl mx-auto px-4">
+                <p>© 2026 StockGuard EWS - Multi-Channel Inventory Engine. Hak Cipta Dilindungi.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Notification Toast Modal -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-700 flex items-center gap-3 transition-all duration-300 transform translate-y-20 opacity-0 z-50">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMsg" class="text-sm font-medium">Sinkronisasi stok berhasil diperbarui!</span>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Sample Products Dataset
+        const sampleProducts = [
+            { id: 'SKU-1001', name: 'Kemeja Flannel Premium L', totalStock: 140, avgDemand: 25, leadTime: 5, stdDev: 8, zScore: 1.65, channels: { shopee: 50, tokopedia: 40, tiktok: 30, pos: 20 } },
+            { id: 'SKU-1002', name: 'Sepatu Sneaker Canvas 42', totalStock: 45, avgDemand: 12, leadTime: 4, stdDev: 4, zScore: 1.65, channels: { shopee: 15, tokopedia: 15, tiktok: 10, pos: 5 } },
+            { id: 'SKU-1003', name: 'Tas Ransel Laptop 15 Inch', totalStock: 320, avgDemand: 18, leadTime: 7, stdDev: 5, zScore: 1.65, channels: { shopee: 120, tokopedia: 100, tiktok: 60, pos: 40 } },
+            { id: 'SKU-1004', name: 'Jaket Bomber Waterproof XL', totalStock: 18, avgDemand: 8, leadTime: 6, stdDev: 3, zScore: 1.65, channels: { shopee: 6, tokopedia: 6, tiktok: 4, pos: 2 } },
+            { id: 'SKU-1005', name: 'Kaos Polos Cotton Combed 30s', totalStock: 500, avgDemand: 45, leadTime: 3, stdDev: 10, zScore: 1.65, channels: { shopee: 200, tokopedia: 150, tiktok: 100, pos: 50 } }
+        ];
+
+        let chartInstance = null;
+        let selectedProductForDetail = null;
+
+        // Login Handler
+        function handleLogin(event) {
+            if (event) event.preventDefault();
+            
+            // Switch views
+            const loginPage = document.getElementById('page-login');
+            const appWrapper = document.getElementById('app-wrapper');
+
+            loginPage.classList.remove('active');
+            loginPage.classList.add('hidden');
+            appWrapper.classList.remove('hidden');
+            
+            // Render Initial Data & Nav State
+            renderInventoryTable();
+            initChannelChart();
+            calculateEWS();
+            navigateTo('dashboard');
+            showToast("Selamat datang kembali di Hub StockGuard EWS!");
+        }
+
+        // Quick Demo Auto Login
+        function quickDemoLogin() {
+            document.getElementById('loginUser').value = "admin@stockguard.io";
+            document.getElementById('loginPass').value = "admin123";
+            handleLogin(null);
+        }
+
+        // Logout Handler
+        function handleLogout() {
+            const loginPage = document.getElementById('page-login');
+            const appWrapper = document.getElementById('app-wrapper');
+
+            appWrapper.classList.add('hidden');
+            loginPage.classList.remove('hidden');
+            loginPage.classList.add('active');
+            showToast("Sesi berhasil diakhiri.");
+        }
+
+        // SPA Navigation Manager
+        function navigateTo(pageId) {
+            // Hide all pages in main app
+            document.querySelectorAll('#app-wrapper .page-view').forEach(view => {
+                view.classList.remove('active');
+            });
+
+            // Show selected page
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            // Update Nav Styles
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-800', 'text-white');
+                btn.classList.add('text-slate-300');
+            });
+            const activeNav = document.getElementById(`nav-${pageId}`);
+            if (activeNav) {
+                activeNav.classList.add('bg-slate-800', 'text-white');
+            }
+
+            // Re-render chart if navigating to channel page
+            if (pageId === 'channels') {
+                setTimeout(() => { 
+                    if (!chartInstance) {
+                        initChannelChart();
+                    } else {
+                        chartInstance.resize(); 
+                    }
+                }, 100);
+            }
+        }
+
+        // Helper function to calculate ROP and SS
+        function calculateMetrics(d, L, z, stdDev) {
+            const ss = Math.round(z * stdDev * Math.sqrt(L));
+            const rop = Math.round((d * L) + ss);
+            return { ss, rop };
+        }
+
+        // Render table rows dynamically
+        function renderInventoryTable() {
+            const tbody = document.getElementById('inventoryTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let warningCount = 0;
+
+            sampleProducts.forEach(prod => {
+                const { ss, rop } = calculateMetrics(prod.avgDemand, prod.leadTime, prod.zScore, prod.stdDev);
+                
+                // Determine EWS Status
+                let statusBadge = '';
+                if (prod.totalStock <= ss) {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 border border-red-200 flex items-center justify-center gap-1"><i class="fa-solid fa-circle-exclamation text-xs"></i> KRITIS (Stockout)</span>`;
+                    warningCount++;
+                } else if (prod.totalStock <= rop) {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center gap-1"><i class="fa-solid fa-triangle-exclamation text-xs"></i> PERLU REORDER</span>`;
+                    warningCount++;
+                } else {
+                    statusBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center gap-1"><i class="fa-solid fa-circle-check text-xs"></i> AMAN</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+                tr.innerHTML = `
+                    <td class="py-3 px-4">
+                        <button onclick="viewProductDetail('${prod.id}')" class="font-bold text-slate-800 hover:text-indigo-600 text-left">${prod.name}</button>
+                        <div class="text-xs font-mono text-slate-400">${prod.id}</div>
+                    </td>
+                    <td class="py-3 px-4 text-center font-semibold text-slate-800">${prod.totalStock} Unit</td>
+                    <td class="py-3 px-4 text-center text-slate-600">${ss} Unit</td>
+                    <td class="py-3 px-4 text-center font-medium text-amber-600">${rop} Unit</td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex justify-center items-center space-x-1 text-xs">
+                            <span class="px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded" title="Shopee">S: ${prod.channels.shopee}</span>
+                            <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded" title="Tokopedia">T: ${prod.channels.tokopedia}</span>
+                            <span class="px-1.5 py-0.5 bg-slate-200 text-slate-800 rounded" title="TikTok">TT: ${prod.channels.tiktok}</span>
+                            <span class="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded" title="POS">POS: ${prod.channels.pos}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">${statusBadge}</td>
+                    <td class="py-3 px-4 text-right space-x-1">
+                        <button onclick="viewProductDetail('${prod.id}')" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs rounded transition">
+                            Detail
+                        </button>
+                        <button onclick="loadIntoSimulator('${prod.id}')" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-medium text-xs rounded transition">
+                            Simulasi
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('criticalCount').innerText = `${warningCount} Produk`;
+        }
+
+        // Product Detail Page View
+        function viewProductDetail(sku) {
+            const prod = sampleProducts.find(p => p.id === sku);
+            if (!prod) return;
+
+            selectedProductForDetail = prod;
+            const { ss, rop } = calculateMetrics(prod.avgDemand, prod.leadTime, prod.zScore, prod.stdDev);
+            const daysLeft = prod.avgDemand > 0 ? (prod.totalStock / prod.avgDemand).toFixed(1) : 0;
+
+            document.getElementById('detailTitle').innerText = prod.name;
+            document.getElementById('detailSku').innerText = `Kode SKU: ${prod.id}`;
+            document.getElementById('detailTotalStock').innerText = `${prod.totalStock} Unit`;
+            document.getElementById('detailAvgDemand').innerText = `${prod.avgDemand} Unit/hari`;
+            document.getElementById('detailLeadTime').innerText = `${prod.leadTime} Hari`;
+            document.getElementById('detailSS').innerText = `${ss} Unit`;
+            document.getElementById('detailROP').innerText = `${rop} Unit`;
+            document.getElementById('detailDaysLeft').innerText = `${daysLeft} Hari`;
+
+            let statusText = "AMAN";
+            let statusColor = "text-emerald-600";
+            if (prod.totalStock <= ss) {
+                statusText = "KRITIS (Stockout)";
+                statusColor = "text-red-600";
+            } else if (prod.totalStock <= rop) {
+                statusText = "PERLU REORDER";
+                statusColor = "text-amber-600";
+            }
+            const badgeEl = document.getElementById('detailStatusBadge');
+            badgeEl.innerText = statusText;
+            badgeEl.className = `font-bold ${statusColor}`;
+
+            // Channels List Render
+            const channelsContainer = document.getElementById('detailChannelsList');
+            channelsContainer.innerHTML = `
+                <div class="flex justify-between py-1 border-b border-slate-200"><span class="text-slate-500">Shopee</span><span class="font-medium">${prod.channels.shopee} Unit</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-200"><span class="text-slate-500">Tokopedia</span><span class="font-medium">${prod.channels.tokopedia} Unit</span></div>
+                <div class="flex justify-between py-1 border-b border-slate-200"><span class="text-slate-500">TikTok Shop</span><span class="font-medium">${prod.channels.tiktok} Unit</span></div>
+                <div class="flex justify-between py-1"><span class="text-slate-500">POS Offline</span><span class="font-medium">${prod.channels.pos} Unit</span></div>
+            `;
+
+            navigateTo('detail');
+        }
+
+        function loadCurrentDetailToSimulator() {
+            if (selectedProductForDetail) {
+                loadIntoSimulator(selectedProductForDetail.id);
+            }
+        }
+
+        // Live EWS Calculation Logic
+        function calculateEWS() {
+            const d = parseFloat(document.getElementById('inputAvgDemand').value) || 0;
+            const L = parseFloat(document.getElementById('inputLeadTime').value) || 0;
+            const z = parseFloat(document.getElementById('inputZScore').value) || 1.65;
+            const stdDev = parseFloat(document.getElementById('inputStdDev').value) || 0;
+            const currentStock = parseFloat(document.getElementById('inputCurrentStock').value) || 0;
+
+            const ss = Math.round(z * stdDev * Math.sqrt(L));
+            const rop = Math.round((d * L) + ss);
+            const daysLeft = d > 0 ? (currentStock / d).toFixed(1) : 0;
+
+            document.getElementById('resSS').innerText = `${ss} unit`;
+            document.getElementById('resROP').innerText = `${rop} unit`;
+            document.getElementById('resDaysLeft').innerText = `${daysLeft} Hari`;
+
+            // Update UI Warnings
+            const statusBox = document.getElementById('statusBox');
+            const statusIcon = document.getElementById('statusIcon');
+            const statusTitle = document.getElementById('statusTitle');
+            const statusDesc = document.getElementById('statusDesc');
+            const progressBar = document.getElementById('progressBar');
+            const barPercent = document.getElementById('barPercent');
+
+            let pct = rop > 0 ? Math.min(Math.round((currentStock / rop) * 100), 100) : 100;
+            progressBar.style.width = `${pct}%`;
+            barPercent.innerText = `${pct}% dari Threshold ROP`;
+
+            if (currentStock <= ss) {
+                statusBox.className = "p-5 rounded-lg border bg-red-950/50 border-red-600/60 flex items-start gap-4";
+                statusIcon.className = "text-3xl text-red-500 mt-1";
+                statusIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i>`;
+                statusTitle.className = "text-lg font-bold text-red-400";
+                statusTitle.innerText = "STATUS KRITIS: BAHAYA STOCKOUT!";
+                statusDesc.innerText = `Stok fisik (${currentStock} unit) telah menyentuh/berada di bawah Safety Stock (${ss} unit). Tindakan darurat pemesanan ulang wajib dilakukan!`;
+                progressBar.className = "bg-red-500 h-full rounded-full transition-all duration-500";
+            } else if (currentStock <= rop) {
+                statusBox.className = "p-5 rounded-lg border bg-amber-950/50 border-amber-600/60 flex items-start gap-4";
+                statusIcon.className = "text-3xl text-amber-500 mt-1";
+                statusIcon.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i>`;
+                statusTitle.className = "text-lg font-bold text-amber-400";
+                statusTitle.innerText = "PERINGATAN DINI: WAKTUNYA REORDER!";
+                statusDesc.innerText = `Stok fisik (${currentStock} unit) berada di bawah batas Reorder Point (${rop} unit). Segera buat Purchase Order ke supplier.`;
+                progressBar.className = "bg-amber-500 h-full rounded-full transition-all duration-500";
+            } else {
+                statusBox.className = "p-5 rounded-lg border bg-emerald-950/50 border-emerald-600/60 flex items-start gap-4";
+                statusIcon.className = "text-3xl text-emerald-400 mt-1";
+                statusIcon.innerHTML = `<i class="fa-solid fa-circle-check"></i>`;
+                statusTitle.className = "text-lg font-bold text-emerald-400";
+                statusTitle.innerText = "STATUS AMAN: PERSEDIAAN CUKUP";
+                statusDesc.innerText = `Stok fisik (${currentStock} unit) berada di atas batas Reorder Point (${rop} unit). Operasional persediaan berjalan normal.`;
+                progressBar.className = "bg-emerald-500 h-full rounded-full transition-all duration-500";
+            }
+        }
+
+        // Load specific product to simulator
+        function loadIntoSimulator(sku) {
+            const prod = sampleProducts.find(p => p.id === sku);
+            if (!prod) return;
+
+            document.getElementById('inputAvgDemand').value = prod.avgDemand;
+            document.getElementById('inputLeadTime').value = prod.leadTime;
+            document.getElementById('inputStdDev').value = prod.stdDev;
+            document.getElementById('inputCurrentStock').value = prod.totalStock;
+
+            calculateEWS();
+            navigateTo('simulator');
+            showToast(`Data produk ${prod.name} dimuat ke Simulator.`);
+        }
+
+        // Chart.js Multi-channel Distribution
+        function initChannelChart() {
+            const ctx = document.getElementById('channelChart');
+            if (!ctx) return;
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            chartInstance = new Chart(ctx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: ['Shopee', 'Tokopedia', 'TikTok Shop', 'POS Offline Store'],
+                    datasets: [{
+                        label: 'Total Alokasi Unit Stok',
+                        data: [385, 305, 204, 117],
+                        backgroundColor: [
+                            'rgba(249, 115, 22, 0.85)',
+                            'rgba(16, 185, 129, 0.85)',
+                            'rgba(15, 23, 42, 0.85)',
+                            'rgba(37, 99, 235, 0.85)'
+                        ],
+                        borderColor: [
+                            '#f97316',
+                            '#10b981',
+                            '#0f172a',
+                            '#2563eb'
+                        ],
+                        borderWidth: 1,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Search Filter for Table
+        function filterTable() {
+            const query = document.getElementById('tableSearch').value.toLowerCase();
+            const rows = document.querySelectorAll('#inventoryTableBody tr');
+
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        }
+
+        // Manual Sync Trigger Simulation
+        function triggerManualSync() {
+            showToast("Proses sinkronisasi terpusat sedang berlangsung...");
+            setTimeout(() => {
+                showToast("Semua channel marketplace & POS berhasil disinkronkan!");
+            }, 1200);
+        }
+
+        // Toast Notification Helper
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            if(!toast || !toastMsg) return;
+            
+            toastMsg.innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
